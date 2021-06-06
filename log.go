@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 type Interface interface {
@@ -125,14 +126,26 @@ func mkLongestPrefixCutter(t string) func(string) string {
 
 func defaultFormatter(mm ...interface{}) (string, string) {
 	level := "info"
-	pp := []string(nil)
-	for _, m := range mm {
+	pp := make([]string, len(mm))
+	for i, m := range mm {
 		switch e := m.(type) {
 		case error:
 			level = "error"
-			pp = append(pp, e.Error()) // TODO reach errors
+			if ef, ok := e.(fmt.Formatter); ok {
+				pp[i] = fmt.Sprintf("%+v", ef)
+			} else {
+				pp[i] = e.Error()
+			}
+		case string:
+			pp[i] = e
+		case []byte:
+			if utf8.Valid(e) {
+				pp[i] = string(e)
+			} else {
+				pp[i] = fmt.Sprintf("%v", e)
+			}
 		default:
-			pp = append(pp, fmt.Sprintf("%v", e)) // TODO if e != ""
+			pp[i] = fmt.Sprintf("%v", e)
 		}
 	}
 	return level, strings.Join(pp, " ")

@@ -3,9 +3,12 @@ package minlog_test
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
+
+	pkgErrors "github.com/pkg/errors"
 
 	"github.com/michurin/minlog"
 )
@@ -21,9 +24,9 @@ func Example_levelInfo() {
 	ctx := context.Background()
 	ctx = minlog.Label(ctx, "component-a")
 	ctx = minlog.Label(ctx, "request-75")
-	l.Log(ctx, "ok")
+	l.Log(ctx, "just string", true, []byte("valid utf8"), []byte{0xff})
 	// Output:
-	// 1975-12-02 18:42:57 info component-a:request-75 example_test.go:24 ok
+	// 1975-12-02 18:42:57 info component-a:request-75 example_test.go:27 just string true valid utf8 [255]
 }
 
 func Example_levelError() {
@@ -31,7 +34,23 @@ func Example_levelError() {
 	ctx := context.Background()
 	l.Log(ctx, "Error:", errors.New("diagnostics"))
 	// Output:
-	// 1975-12-02 18:42:57 error example_test.go:32 Error: diagnostics
+	// 1975-12-02 18:42:57 error example_test.go:35 Error: diagnostics
+}
+
+func Example_pkgErrorsCompatMultilineJSONEncoding() {
+	l := minlog.New(
+		withConstTime,
+		minlog.WithLineFormatter(func(tm, level, label, caller, msg string) string {
+			b, _ := json.Marshal(map[string]string{"time": tm, "level": level, "label": label, "caller": caller, "msg": msg})
+			return string(b)
+		}))
+	ctx := context.Background()
+	err := errors.New("diagnostics")
+	err = pkgErrors.WithMessage(err, "additional message")
+	err = pkgErrors.WithMessage(err, "more details")
+	l.Log(ctx, "Error:", err)
+	// Output:
+	// {"caller":"example_test.go:51","label":"","level":"error","msg":"Error: diagnostics\nadditional message\nmore details","time":"1975-12-02 18:42:57"}
 }
 
 func ExampleLabel_context() {
@@ -39,7 +58,7 @@ func ExampleLabel_context() {
 	ctx := minlog.Label(context.Background(), "scope")
 	l.Log(ctx, "ok")
 	// Output:
-	// 1975-12-02 18:42:57 info scope example_test.go:40 ok
+	// 1975-12-02 18:42:57 info scope example_test.go:59 ok
 }
 
 func ExampleLabel_nestedContext() {
@@ -49,7 +68,7 @@ func ExampleLabel_nestedContext() {
 	ctx = minlog.Label(ctx, "subscope")
 	l.Log(ctx, "ok")
 	// Output:
-	// 1975-12-02 18:42:57 info scope:subscope example_test.go:50 ok
+	// 1975-12-02 18:42:57 info scope:subscope example_test.go:69 ok
 }
 
 func ExampleWithLineFormatter() {
@@ -62,7 +81,7 @@ func ExampleWithLineFormatter() {
 	ctx := minlog.Label(context.Background(), "component-a")
 	l.Log(ctx, "ok")
 	// Output:
-	// 1975-12-02 18:42:57 [info] example_test.go:63 [component-a] "ok"
+	// 1975-12-02 18:42:57 [info] example_test.go:82 [component-a] "ok"
 }
 
 func ExampleWithTimeFormat() {
@@ -70,10 +89,10 @@ func ExampleWithTimeFormat() {
 		minlog.WithNower(constTime),
 		minlog.WithTimeFormat(time.RFC3339Nano),
 	)
-	ctx := minlog.Label(context.Background(), "component-a")
+	ctx := context.Background()
 	l.Log(ctx, "ok")
 	// Output:
-	// 1975-12-02T18:42:57.777Z info component-a example_test.go:74 ok
+	// 1975-12-02T18:42:57.777Z info example_test.go:93 ok
 }
 
 func ExampleWithWriter() {
@@ -86,12 +105,12 @@ func ExampleWithWriter() {
 	l.Log(ctx, "ok")
 	fmt.Printf("%q\n", output.String())
 	// Output:
-	// "1975-12-02 18:42:57 info example_test.go:86 ok\n"
+	// "1975-12-02 18:42:57 info example_test.go:105 ok\n"
 }
 
 func ExampleSetDefaultLogger() {
 	minlog.SetDefaultLogger(minlog.New(withConstTime))
 	minlog.Log(context.Background(), "ok")
 	// Output:
-	// 1975-12-02 18:42:57 info example_test.go:94 ok
+	// 1975-12-02 18:42:57 info example_test.go:113 ok
 }
