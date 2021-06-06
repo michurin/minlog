@@ -1,8 +1,6 @@
 # minlog
 
-## Status
-
-Draft
+[![codecov](https://codecov.io/gh/michurin/minlog/branch/master/graph/badge.svg?token=QNI8841BI4)](https://codecov.io/gh/michurin/minlog)
 
 ## Goals and values
 
@@ -14,5 +12,5 @@ Draft
 
 ## Todo
 
-- [ ] CI
+- [x] CI
 - [ ] Comment all exported things
