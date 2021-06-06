@@ -3,6 +3,8 @@ package minlog
 import (
 	"context"
 	"fmt"
+	"io"
+	"os"
 	"path"
 	"runtime"
 	"strings"
@@ -16,11 +18,11 @@ type Interface interface {
 type Logger struct {
 	timeFmt        string
 	nower          func() time.Time
-	fileNameCutter func(string) string
-	formatter      func(...interface{}) (string, string)
-	lineFmt        string
+	fileNameCutter func(string) string                   // it has to be option WithFileNameCutter?
+	formatter      func(...interface{}) (string, string) // it has to be option too?
+	lineFormatter  func(tm, level, label, caller, msg string) string
+	output         io.Writer
 	callerLevel    int
-	// TODO add output stream
 }
 
 type logContextKey string
@@ -34,8 +36,9 @@ func New(opt ...Option) *Logger {
 		timeFmt:        "2006-01-02 15:04:05",
 		nower:          time.Now,
 		fileNameCutter: mkLongestPrefixCutter(dirname),
-		formatter:      simpleFormatter,
-		lineFmt:        "%s %s %s %s %s",
+		formatter:      defaultFormatter,
+		lineFormatter:  defaultLineFomatter,
+		output:         os.Stdout,
 		callerLevel:    2,
 	}
 	for _, o := range opt {
@@ -48,22 +51,16 @@ func (l *Logger) Log(ctx context.Context, message ...interface{}) {
 	tm := l.nower().Format(l.timeFmt)
 	caller := l.caller()
 	label, _ := ctx.Value(labelKey).(string)
-	if label == "" {
-		label = "."
-	}
 	level, msg := l.formatter(message...)
-	fmt.Printf(l.lineFmt, tm, level, label, caller, msg)
+	fmt.Fprintln(l.output, l.lineFormatter(tm, level, label, caller, msg))
 }
 
 func (l *Logger) caller() string {
-	_, file, line, ok := runtime.Caller(l.callerLevel)
-	if !ok {
-		return "[no file]"
-	}
+	_, file, line, _ := runtime.Caller(l.callerLevel)
 	return fmt.Sprintf("%s:%d", l.fileNameCutter(file), line)
 }
 
-// ------------
+// -- func
 
 var defaultLogger Interface
 
@@ -71,12 +68,14 @@ func Log(ctx context.Context, message ...interface{}) {
 	defaultLogger.Log(ctx, message...)
 }
 
-func SetDefaultLogger(l *Logger) {
-	l.callerLevel++
+func SetDefaultLogger(l Interface) {
+	if lg, ok := l.(*Logger); ok {
+		lg.callerLevel++
+	}
 	defaultLogger = l
 }
 
-// ------------
+// -- options
 
 type Option func(*Logger)
 
@@ -86,15 +85,21 @@ func WithTimeFormat(fmt string) Option {
 	}
 }
 
-func WithLineFormat(fmt string) Option {
+func WithLineFormatter(fmtr func(tm, level, label, caller, msg string) string) Option {
 	return func(l *Logger) {
-		l.lineFmt = fmt
+		l.lineFormatter = fmtr
 	}
 }
 
 func WithNower(nwr func() time.Time) Option {
 	return func(l *Logger) {
 		l.nower = nwr
+	}
+}
+
+func WithWriter(w io.Writer) Option {
+	return func(l *Logger) {
+		l.output = w
 	}
 }
 
@@ -116,9 +121,9 @@ func mkLongestPrefixCutter(t string) func(string) string {
 	}
 }
 
-//
+// -- defaults
 
-func simpleFormatter(mm ...interface{}) (string, string) {
+func defaultFormatter(mm ...interface{}) (string, string) {
 	level := "info"
 	pp := []string(nil)
 	for _, m := range mm {
@@ -131,6 +136,15 @@ func simpleFormatter(mm ...interface{}) (string, string) {
 		}
 	}
 	return level, strings.Join(pp, " ")
+}
+
+func defaultLineFomatter(tm, level, label, caller, msg string) string {
+	a := []string{tm, level}
+	if label != "" {
+		a = append(a, label)
+	}
+	a = append(a, caller, msg)
+	return strings.Join(a, " ")
 }
 
 // -- context
