@@ -12,6 +12,11 @@ import (
 	"unicode/utf8"
 )
 
+const (
+	DefaultInfoLabel  = "info"
+	DefaultErrorLabel = "error"
+)
+
 type Interface interface {
 	Log(ctx context.Context, message ...interface{})
 }
@@ -19,10 +24,12 @@ type Interface interface {
 type Logger struct {
 	timeFmt        string
 	nower          func() time.Time
-	fileNameCutter func(string) string                   // it has to be option WithFileNameCutter?
-	formatter      func(...interface{}) (string, string) // it has to be option too?
+	fileNameCutter func(string) string                 // it has to be option WithFileNameCutter?
+	formatter      func(...interface{}) (bool, string) // it has to be option too?
 	lineFormatter  func(tm, level, label, caller, msg string) string
 	defaultLabel   string
+	labelInfo      string
+	labelError     string
 	output         io.Writer
 	callerLevel    int
 }
@@ -41,6 +48,8 @@ func New(opt ...Option) *Logger {
 		formatter:      defaultFormatter,
 		lineFormatter:  defaultLineFomatter,
 		defaultLabel:   "",
+		labelInfo:      DefaultInfoLabel,
+		labelError:     DefaultErrorLabel,
 		output:         os.Stdout,
 		callerLevel:    2,
 	}
@@ -54,7 +63,11 @@ func (l *Logger) Log(ctx context.Context, message ...interface{}) {
 	tm := l.nower().Format(l.timeFmt)
 	caller := l.caller()
 	label := l.label(ctx)
-	level, msg := l.formatter(message...)
+	isError, msg := l.formatter(message...)
+	level := l.labelInfo
+	if isError {
+		level = l.labelError
+	}
 	fmt.Fprintln(l.output, l.lineFormatter(tm, level, label, caller, msg))
 }
 
@@ -123,6 +136,13 @@ func WithLabelPlaceholder(s string) Option {
 	}
 }
 
+func WithLevelLabels(info, err string) Option {
+	return func(l *Logger) {
+		l.labelInfo = info
+		l.labelError = err
+	}
+}
+
 // -- helpers
 
 func mkLongestPrefixCutter(t string) func(string) string {
@@ -143,13 +163,13 @@ func mkLongestPrefixCutter(t string) func(string) string {
 
 // -- defaults
 
-func defaultFormatter(mm ...interface{}) (string, string) {
-	level := "info"
+func defaultFormatter(mm ...interface{}) (bool, string) {
+	isError := false
 	pp := make([]string, len(mm))
 	for i, m := range mm {
 		switch e := m.(type) {
 		case error:
-			level = "error"
+			isError = true
 			if ef, ok := e.(fmt.Formatter); ok {
 				pp[i] = fmt.Sprintf("%+v", ef)
 			} else {
@@ -167,7 +187,7 @@ func defaultFormatter(mm ...interface{}) (string, string) {
 			pp[i] = fmt.Sprintf("%v", e)
 		}
 	}
-	return level, strings.Join(pp, " ")
+	return isError, strings.Join(pp, " ")
 }
 
 func defaultLineFomatter(tm, level, label, caller, msg string) string {

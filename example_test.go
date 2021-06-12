@@ -126,9 +126,22 @@ func ExampleWithLabelPlaceholder() {
 	// 1975-12-02 18:42:57 info <nolabel> example_test.go:124 ok
 }
 
+func ExampleWithLevelLabels() {
+	l := minlog.New(
+		minlog.WithNower(constTime),
+		minlog.WithLevelLabels("[INFO_]", "[ERROR]"),
+	)
+	ctx := context.Background()
+	l.Log(ctx, "ok")
+	l.Log(ctx, errors.New("error details"))
+	// Output:
+	// 1975-12-02 18:42:57 [INFO_] example_test.go:135 ok
+	// 1975-12-02 18:42:57 [ERROR] example_test.go:136 error details
+}
+
 func ExampleSetDefaultLogger() {
 	minlog.SetDefaultLogger(minlog.New(withConstTime))
 	minlog.Log(context.Background(), "ok")
 	// Output:
-	// 1975-12-02 18:42:57 info example_test.go:131 ok
+	// 1975-12-02 18:42:57 info example_test.go:144 ok
 }
