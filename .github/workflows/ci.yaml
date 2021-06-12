@@ -1,5 +1,5 @@
 ---
-name: "Test and coverage"
+name: build # this string appears on badge
 on:
   - push
   - pull_request

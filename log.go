@@ -22,6 +22,7 @@ type Logger struct {
 	fileNameCutter func(string) string                   // it has to be option WithFileNameCutter?
 	formatter      func(...interface{}) (string, string) // it has to be option too?
 	lineFormatter  func(tm, level, label, caller, msg string) string
+	defaultLabel   string
 	output         io.Writer
 	callerLevel    int
 }
@@ -39,6 +40,7 @@ func New(opt ...Option) *Logger {
 		fileNameCutter: mkLongestPrefixCutter(dirname),
 		formatter:      defaultFormatter,
 		lineFormatter:  defaultLineFomatter,
+		defaultLabel:   "",
 		output:         os.Stdout,
 		callerLevel:    2,
 	}
@@ -51,9 +53,20 @@ func New(opt ...Option) *Logger {
 func (l *Logger) Log(ctx context.Context, message ...interface{}) {
 	tm := l.nower().Format(l.timeFmt)
 	caller := l.caller()
-	label, _ := ctx.Value(labelKey).(string)
+	label := l.label(ctx)
 	level, msg := l.formatter(message...)
 	fmt.Fprintln(l.output, l.lineFormatter(tm, level, label, caller, msg))
+}
+
+func (l *Logger) label(ctx context.Context) string {
+	if ctx == nil {
+		return l.defaultLabel
+	}
+	label, _ := ctx.Value(labelKey).(string)
+	if label == "" {
+		return l.defaultLabel
+	}
+	return label
 }
 
 func (l *Logger) caller() string {
@@ -101,6 +114,12 @@ func WithNower(nwr func() time.Time) Option {
 func WithWriter(w io.Writer) Option {
 	return func(l *Logger) {
 		l.output = w
+	}
+}
+
+func WithLabelPlaceholder(s string) Option {
+	return func(l *Logger) {
+		l.defaultLabel = s
 	}
 }
 
