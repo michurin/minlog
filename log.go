@@ -89,7 +89,19 @@ func (l *Logger) caller() string {
 
 // -- func
 
-var defaultLogger Interface
+// use SetDefaultLogger to tune it
+var defaultLogger Interface = &Logger{
+	timeFmt:        "2006-01-02 15:04:05",
+	nower:          time.Now,
+	fileNameCutter: mkLongestPrefixCutter(""),
+	formatter:      defaultFormatter,
+	lineFormatter:  defaultLineFomatter,
+	defaultLabel:   "",
+	labelInfo:      DefaultInfoLabel,
+	labelError:     DefaultErrorLabel,
+	output:         os.Stderr,
+	callerLevel:    3,
+}
 
 func Log(ctx context.Context, message ...interface{}) {
 	defaultLogger.Log(ctx, message...)
