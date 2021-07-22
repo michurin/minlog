@@ -89,7 +89,7 @@ func (l *Logger) caller() string {
 
 // -- func
 
-// use SetDefaultLogger to tune it
+// use SetDefaultLogger to tune it.
 var defaultLogger Interface = &Logger{
 	timeFmt:        "2006-01-02 15:04:05",
 	nower:          time.Now,
