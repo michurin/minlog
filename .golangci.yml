@@ -5,6 +5,13 @@ linters-settings:
     max-blank-identifiers: 3
   gci:
     local-prefixes: github.com/michurin/minlog
+issues:
+  exclude-rules:
+      # dynamic error definitions are more readable
+      # and more suitable for examples
+    - path: example_test\.go
+      linters:
+        - goerr113
 linters:
   disable-all: true
   enable:
@@ -45,7 +52,7 @@ linters:
     - asciicheck
     - cyclop
     - durationcheck
-      # - errorlint -- TODO
+    - errorlint
     - exhaustivestruct
     - forbidigo
     - forcetypeassert
@@ -55,10 +62,10 @@ linters:
     - gocognit
     - godot
     - godox
-      # - goerr113 -- TODO disable in tests only
+    - goerr113
     - gofumpt
     - goheader
-      # - gomnd -- TODO
+    - gomnd
     - gomoddirectives
     - gomodguard
     - ifshort

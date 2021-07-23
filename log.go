@@ -15,6 +15,8 @@ import (
 const (
 	DefaultInfoLabel  = "info"
 	DefaultErrorLabel = "error"
+
+	baseCallerLevel = 2
 )
 
 type Interface interface {
@@ -51,7 +53,7 @@ func New(opt ...Option) *Logger {
 		labelInfo:      DefaultInfoLabel,
 		labelError:     DefaultErrorLabel,
 		output:         os.Stdout,
-		callerLevel:    2,
+		callerLevel:    baseCallerLevel,
 	}
 	for _, o := range opt {
 		o(l)
@@ -100,7 +102,7 @@ var defaultLogger Interface = &Logger{
 	labelInfo:      DefaultInfoLabel,
 	labelError:     DefaultErrorLabel,
 	output:         os.Stderr,
-	callerLevel:    3,
+	callerLevel:    baseCallerLevel + 1,
 }
 
 func Log(ctx context.Context, message ...interface{}) {
@@ -182,7 +184,7 @@ func defaultFormatter(mm ...interface{}) (bool, string) {
 		switch e := m.(type) {
 		case error:
 			isError = true
-			if ef, ok := e.(fmt.Formatter); ok {
+			if ef, ok := e.(fmt.Formatter); ok { //nolint:errorlint // here we have to check interface
 				pp[i] = fmt.Sprintf("%+v", ef)
 			} else {
 				pp[i] = e.Error()
