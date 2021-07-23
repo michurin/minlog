@@ -1,0 +1,80 @@
+linters-settings:
+  lll:
+    line-length: 160
+  dogsled:
+    max-blank-identifiers: 3
+  gci:
+    local-prefixes: github.com/michurin/minlog
+linters:
+  disable-all: true
+  enable:
+    - bodyclose
+    - deadcode
+    - depguard
+    - dogsled
+    - dupl
+    - errcheck
+    - exhaustive
+    - exportloopref
+    - funlen
+    - goconst
+    - gocritic
+    - gocyclo
+    - gofmt
+    - goimports
+    - goprintffuncname
+    - gosec
+    - gosimple
+    - govet
+    - ineffassign
+    - lll
+    - misspell
+    - nakedret
+    - noctx
+    - nolintlint
+    - rowserrcheck
+    - staticcheck
+    - structcheck
+    - stylecheck
+    - typecheck
+    - unconvert
+    - unparam
+    - unused
+    - varcheck
+    - whitespace
+    - asciicheck
+    - cyclop
+    - durationcheck
+      # - errorlint -- TODO
+    - exhaustivestruct
+    - forbidigo
+    - forcetypeassert
+    - gci
+      # - gochecknoglobals
+    - gochecknoinits
+    - gocognit
+    - godot
+    - godox
+      # - goerr113 -- TODO disable in tests only
+    - gofumpt
+    - goheader
+      # - gomnd -- TODO
+    - gomoddirectives
+    - gomodguard
+    - ifshort
+    - importas
+    - makezero
+    - nestif
+    - nilerr
+      # - nlreturn
+      # - paralleltest
+    - prealloc
+    - predeclared
+    - revive
+    - sqlclosecheck
+      # - testpackage
+    - thelper
+    - tparallel
+    - wastedassign
+    - wrapcheck
+      # - wsl
