@@ -26,7 +26,7 @@ type Interface interface {
 type Logger struct {
 	timeFmt        string
 	nower          func() time.Time
-	fileNameCutter func(string) string                 // it has to be option WithFileNameCutter?
+	fileNameCutter func(string) string
 	formatter      func(...interface{}) (bool, string) // it has to be option too?
 	lineFormatter  func(tm, level, label, caller, msg string) string
 	defaultLabel   string
@@ -154,6 +154,12 @@ func WithLevelLabels(info, err string) Option {
 	return func(l *Logger) {
 		l.labelInfo = info
 		l.labelError = err
+	}
+}
+
+func WithCallerCutter(ctr func(p string) string) Option {
+	return func(l *Logger) {
+		l.fileNameCutter = ctr
 	}
 }
 

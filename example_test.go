@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"path"
 	"time"
 
 	pkgErrors "github.com/pkg/errors"
@@ -25,7 +26,7 @@ func ExampleLog_levelInfoAndLabels() {
 	ctx = minlog.Label(ctx, "request-75")
 	l.Log(ctx, "just string", true, []byte("valid utf8"), []byte{0xff})
 	// Output:
-	// 1975-12-02 18:42:57 info component-a:request-75 example_test.go:26 just string true valid utf8 [255]
+	// 1975-12-02 18:42:57 info component-a:request-75 example_test.go:27 just string true valid utf8 [255]
 }
 
 func ExampleLog_levelError() {
@@ -33,14 +34,14 @@ func ExampleLog_levelError() {
 	ctx := context.Background()
 	l.Log(ctx, "Error:", errors.New("diagnostics"))
 	// Output:
-	// 1975-12-02 18:42:57 error example_test.go:34 Error: diagnostics
+	// 1975-12-02 18:42:57 error example_test.go:35 Error: diagnostics
 }
 
 func ExampleLog_nilContext() {
 	l := minlog.New(withReproducibleTime)
 	l.Log(nil, "Error:", errors.New("diagnostics")) //nolint:staticcheck // disable nil context warning
 	// Output:
-	// 1975-12-02 18:42:57 error example_test.go:41 Error: diagnostics
+	// 1975-12-02 18:42:57 error example_test.go:42 Error: diagnostics
 }
 
 func Example_pkgErrorsCompatMultilineJSONEncoding() {
@@ -56,7 +57,7 @@ func Example_pkgErrorsCompatMultilineJSONEncoding() {
 	err = pkgErrors.WithMessage(err, "more details")
 	l.Log(ctx, "Error:", err)
 	// Output:
-	// {"caller":"example_test.go:57","label":"","level":"error","msg":"Error: diagnostics\nadditional message\nmore details","time":"1975-12-02 18:42:57"}
+	// {"caller":"example_test.go:58","label":"","level":"error","msg":"Error: diagnostics\nadditional message\nmore details","time":"1975-12-02 18:42:57"}
 }
 
 func ExampleLabel_context() {
@@ -64,7 +65,7 @@ func ExampleLabel_context() {
 	ctx := minlog.Label(context.Background(), "scope")
 	l.Log(ctx, "ok")
 	// Output:
-	// 1975-12-02 18:42:57 info scope example_test.go:65 ok
+	// 1975-12-02 18:42:57 info scope example_test.go:66 ok
 }
 
 func ExampleLabel_nestedContext() {
@@ -74,7 +75,7 @@ func ExampleLabel_nestedContext() {
 	ctx = minlog.Label(ctx, "subscope")
 	l.Log(ctx, "ok")
 	// Output:
-	// 1975-12-02 18:42:57 info scope:subscope example_test.go:75 ok
+	// 1975-12-02 18:42:57 info scope:subscope example_test.go:76 ok
 }
 
 func ExampleWithLineFormatter() {
@@ -87,7 +88,7 @@ func ExampleWithLineFormatter() {
 	ctx := minlog.Label(context.Background(), "component-a")
 	l.Log(ctx, "ok")
 	// Output:
-	// 1975-12-02 18:42:57 [info] example_test.go:88 [component-a] "ok"
+	// 1975-12-02 18:42:57 [info] example_test.go:89 [component-a] "ok"
 }
 
 func ExampleWithTimeFormat() {
@@ -95,7 +96,7 @@ func ExampleWithTimeFormat() {
 	ctx := context.Background()
 	l.Log(ctx, "ok")
 	// Output:
-	// 1975-12-02T18:42:57.777Z info example_test.go:96 ok
+	// 1975-12-02T18:42:57.777Z info example_test.go:97 ok
 }
 
 func ExampleWithWriter() {
@@ -105,7 +106,7 @@ func ExampleWithWriter() {
 	l.Log(ctx, "ok")
 	fmt.Printf("%q\n", output.String())
 	// Output:
-	// "1975-12-02 18:42:57 info example_test.go:105 ok\n"
+	// "1975-12-02 18:42:57 info example_test.go:106 ok\n"
 }
 
 func ExampleWithLabelPlaceholder() {
@@ -113,7 +114,7 @@ func ExampleWithLabelPlaceholder() {
 	ctx := context.Background()
 	l.Log(ctx, "ok")
 	// Output:
-	// 1975-12-02 18:42:57 info <nolabel> example_test.go:114 ok
+	// 1975-12-02 18:42:57 info <nolabel> example_test.go:115 ok
 }
 
 func ExampleWithLevelLabels() {
@@ -122,13 +123,20 @@ func ExampleWithLevelLabels() {
 	l.Log(ctx, "ok")
 	l.Log(ctx, errors.New("error details"))
 	// Output:
-	// 1975-12-02 18:42:57 [INFO_] example_test.go:122 ok
-	// 1975-12-02 18:42:57 [ERROR] example_test.go:123 error details
+	// 1975-12-02 18:42:57 [INFO_] example_test.go:123 ok
+	// 1975-12-02 18:42:57 [ERROR] example_test.go:124 error details
+}
+
+func ExampleWithCallerCutter() {
+	l := minlog.New(withReproducibleTime, minlog.WithCallerCutter(path.Base))
+	l.Log(context.Background(), "ok")
+	// Output:
+	// 1975-12-02 18:42:57 info example_test.go:132 ok
 }
 
 func ExampleSetDefaultLogger() {
 	minlog.SetDefaultLogger(minlog.New(withReproducibleTime))
 	minlog.Log(context.Background(), "ok")
 	// Output:
-	// 1975-12-02 18:42:57 info example_test.go:131 ok
+	// 1975-12-02 18:42:57 info example_test.go:139 ok
 }
