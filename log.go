@@ -30,6 +30,7 @@ type Logger struct {
 	formatter      func(...interface{}) (bool, string) // it has to be option too?
 	lineFormatter  func(tm, level, label, caller, msg string) string
 	defaultLabel   string
+	commonLabel    string
 	labelInfo      string
 	labelError     string
 	output         io.Writer
@@ -50,6 +51,7 @@ func New(opt ...Option) *Logger {
 		formatter:      defaultFormatter,
 		lineFormatter:  defaultLineFomatter,
 		defaultLabel:   "",
+		commonLabel:    "",
 		labelInfo:      DefaultInfoLabel,
 		labelError:     DefaultErrorLabel,
 		output:         os.Stdout,
@@ -74,10 +76,17 @@ func (l *Logger) Log(ctx context.Context, message ...interface{}) {
 }
 
 func (l *Logger) label(ctx context.Context) string {
-	if ctx == nil {
-		return l.defaultLabel
+	label := l.commonLabel
+	if ctx != nil {
+		l, _ := ctx.Value(labelKey).(string)
+		if l != "" {
+			if label == "" {
+				label = l
+			} else {
+				label += ":" + l
+			}
+		}
 	}
-	label, _ := ctx.Value(labelKey).(string)
 	if label == "" {
 		return l.defaultLabel
 	}
@@ -99,6 +108,7 @@ var defaultLogger Interface = &Logger{
 	formatter:      defaultFormatter,
 	lineFormatter:  defaultLineFomatter,
 	defaultLabel:   "",
+	commonLabel:    "",
 	labelInfo:      DefaultInfoLabel,
 	labelError:     DefaultErrorLabel,
 	output:         os.Stderr,
@@ -147,6 +157,12 @@ func WithWriter(w io.Writer) Option {
 func WithLabelPlaceholder(s string) Option {
 	return func(l *Logger) {
 		l.defaultLabel = s
+	}
+}
+
+func WithCommonLabel(s string) Option {
+	return func(l *Logger) {
+		l.commonLabel = s
 	}
 }
 

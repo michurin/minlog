@@ -117,26 +117,36 @@ func ExampleWithLabelPlaceholder() {
 	// 1975-12-02 18:42:57 info <nolabel> example_test.go:115 ok
 }
 
+func ExampleWithCommonLabel() {
+	l := minlog.New(withReproducibleTime, minlog.WithCommonLabel("logger_label"))
+	ctx := context.Background()
+	l.Log(ctx, "ok")
+	l.Log(minlog.Label(ctx, "from_ctx"), "ok")
+	// Output:
+	// 1975-12-02 18:42:57 info logger_label example_test.go:123 ok
+	// 1975-12-02 18:42:57 info logger_label:from_ctx example_test.go:124 ok
+}
+
 func ExampleWithLevelLabels() {
 	l := minlog.New(withReproducibleTime, minlog.WithLevelLabels("[INFO_]", "[ERROR]"))
 	ctx := context.Background()
 	l.Log(ctx, "ok")
 	l.Log(ctx, errors.New("error details"))
 	// Output:
-	// 1975-12-02 18:42:57 [INFO_] example_test.go:123 ok
-	// 1975-12-02 18:42:57 [ERROR] example_test.go:124 error details
+	// 1975-12-02 18:42:57 [INFO_] example_test.go:133 ok
+	// 1975-12-02 18:42:57 [ERROR] example_test.go:134 error details
 }
 
 func ExampleWithCallerCutter() {
 	l := minlog.New(withReproducibleTime, minlog.WithCallerCutter(path.Base))
 	l.Log(context.Background(), "ok")
 	// Output:
-	// 1975-12-02 18:42:57 info example_test.go:132 ok
+	// 1975-12-02 18:42:57 info example_test.go:142 ok
 }
 
 func ExampleSetDefaultLogger() {
 	minlog.SetDefaultLogger(minlog.New(withReproducibleTime))
 	minlog.Log(context.Background(), "ok")
 	// Output:
-	// 1975-12-02 18:42:57 info example_test.go:139 ok
+	// 1975-12-02 18:42:57 info example_test.go:149 ok
 }
