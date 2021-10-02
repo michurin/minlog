@@ -59,7 +59,7 @@ linters:
     - forcetypeassert
     - gci
       # - gochecknoglobals
-    - gochecknoinits
+      # - gochecknoinits
     - gocognit
     - godot
     - godox

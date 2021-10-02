@@ -1,3 +1,6 @@
+/*
+Minimalist, simple logger
+*/
 package minlog
 
 import (
@@ -24,38 +27,40 @@ type Interface interface {
 }
 
 type Logger struct {
-	timeFmt        string
-	nower          func() time.Time
-	fileNameCutter func(string) string
-	formatter      func(...interface{}) (bool, string) // it has to be option too?
-	lineFormatter  func(tm, level, label, caller, msg string) string
-	defaultLabel   string
-	commonLabel    string
-	labelInfo      string
-	labelError     string
-	output         io.Writer
-	callerLevel    int
+	timeFmt          string
+	nower            func() time.Time
+	fileNameCutter   func(string) string
+	messageFormatter func(...interface{}) (bool, string) // it has to be option too?
+	labelFormatter   func(interface{}) string
+	lineFormatter    func(tm, level, label, caller, msg string) string
+	defaultLabel     string
+	commonLabel      string
+	labelInfo        string
+	labelError       string
+	output           io.Writer
+	callerLevel      int
 }
 
 type logContextKey string
 
-const labelKey = logContextKey("label")
+var labelKey interface{} // initialized by init()
 
 func New(opt ...Option) *Logger {
 	_, file, _, _ := runtime.Caller(1)
 	dirname := file[:len(file)-len(path.Base(file))] // including final separator
 	l := &Logger{
-		timeFmt:        "2006-01-02 15:04:05",
-		nower:          time.Now,
-		fileNameCutter: mkLongestPrefixCutter(dirname),
-		formatter:      defaultFormatter,
-		lineFormatter:  defaultLineFomatter,
-		defaultLabel:   "",
-		commonLabel:    "",
-		labelInfo:      DefaultInfoLabel,
-		labelError:     DefaultErrorLabel,
-		output:         os.Stdout,
-		callerLevel:    baseCallerLevel,
+		timeFmt:          "2006-01-02 15:04:05",
+		nower:            time.Now,
+		fileNameCutter:   mkLongestPrefixCutter(dirname),
+		messageFormatter: defaultMessageFormatter,
+		lineFormatter:    defaultLineFormatter,
+		labelFormatter:   defaultLabelFormatter,
+		defaultLabel:     "",
+		commonLabel:      "",
+		labelInfo:        DefaultInfoLabel,
+		labelError:       DefaultErrorLabel,
+		output:           os.Stdout,
+		callerLevel:      baseCallerLevel,
 	}
 	for _, o := range opt {
 		o(l)
@@ -67,7 +72,7 @@ func (l *Logger) Log(ctx context.Context, message ...interface{}) {
 	tm := l.nower().Format(l.timeFmt)
 	caller := l.caller()
 	label := l.label(ctx)
-	isError, msg := l.formatter(message...)
+	isError, msg := l.messageFormatter(message...)
 	level := l.labelInfo
 	if isError {
 		level = l.labelError
@@ -76,21 +81,20 @@ func (l *Logger) Log(ctx context.Context, message ...interface{}) {
 }
 
 func (l *Logger) label(ctx context.Context) string {
-	label := l.commonLabel
-	if ctx != nil {
-		l, _ := ctx.Value(labelKey).(string)
-		if l != "" {
-			if label == "" {
-				label = l
-			} else {
-				label += ":" + l
-			}
-		}
+	if ctx == nil {
+		return ""
+	}
+	label := l.labelFormatter(ctx.Value(labelKey))
+	if label == "" {
+		label = l.defaultLabel
 	}
 	if label == "" {
-		return l.defaultLabel
+		return l.commonLabel
 	}
-	return label
+	if l.commonLabel == "" {
+		return label
+	}
+	return l.commonLabel + ":" + label
 }
 
 func (l *Logger) caller() string {
@@ -101,24 +105,18 @@ func (l *Logger) caller() string {
 // -- func
 
 // use SetDefaultLogger to tune it.
-var defaultLogger Interface = &Logger{
-	timeFmt:        "2006-01-02 15:04:05",
-	nower:          time.Now,
-	fileNameCutter: mkLongestPrefixCutter(""),
-	formatter:      defaultFormatter,
-	lineFormatter:  defaultLineFomatter,
-	defaultLabel:   "",
-	commonLabel:    "",
-	labelInfo:      DefaultInfoLabel,
-	labelError:     DefaultErrorLabel,
-	output:         os.Stderr,
-	callerLevel:    baseCallerLevel + 1,
+var defaultLogger Interface
+
+func init() {
+	SetDefaultLogger(New())
+	SetDefaultLabelKey(logContextKey("label"))
 }
 
 func Log(ctx context.Context, message ...interface{}) {
 	defaultLogger.Log(ctx, message...)
 }
 
+// SetDefaultLogger touches global variable, it is not thread safe.
 func SetDefaultLogger(l Interface) {
 	if lg, ok := l.(*Logger); ok {
 		lg.callerLevel++
@@ -139,6 +137,12 @@ func WithTimeFormat(fmt string) Option {
 func WithLineFormatter(fmtr func(tm, level, label, caller, msg string) string) Option {
 	return func(l *Logger) {
 		l.lineFormatter = fmtr
+	}
+}
+
+func WithLabelFormatter(fmtr func(interface{}) string) Option {
+	return func(l *Logger) {
+		l.labelFormatter = fmtr
 	}
 }
 
@@ -199,7 +203,7 @@ func mkLongestPrefixCutter(t string) func(string) string {
 
 // -- defaults
 
-func defaultFormatter(mm ...interface{}) (bool, string) {
+func defaultMessageFormatter(mm ...interface{}) (bool, string) {
 	isError := false
 	pp := make([]string, len(mm))
 	for i, m := range mm {
@@ -226,7 +230,7 @@ func defaultFormatter(mm ...interface{}) (bool, string) {
 	return isError, strings.Join(pp, " ")
 }
 
-func defaultLineFomatter(tm, level, label, caller, msg string) string {
+func defaultLineFormatter(tm, level, label, caller, msg string) string {
 	a := []string{tm, level}
 	if label != "" {
 		a = append(a, label)
@@ -235,8 +239,23 @@ func defaultLineFomatter(tm, level, label, caller, msg string) string {
 	return strings.Join(a, " ")
 }
 
+func defaultLabelFormatter(v interface{}) string {
+	label, _ := v.(string)
+	return label
+}
+
 // -- context
 
+// SetDefaultLabelKey touches global variable, it is not thread safe.
+// And it obviously affects Label function. You have to set default
+// label key before first Label usage.
+func SetDefaultLabelKey(l interface{}) {
+	labelKey = l
+}
+
+// Label sets/adds label. You are still able to use custom
+// context key and custom ctx setter,
+// consider SetDefaultLabelKey and WithLabelFormatter.
 func Label(ctx context.Context, label string) context.Context {
 	l, _ := ctx.Value(labelKey).(string)
 	if l != "" {
